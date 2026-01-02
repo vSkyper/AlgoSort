@@ -1,5 +1,5 @@
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { lucario } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface CodeBlockProps {
   code: string;
@@ -7,10 +7,10 @@ interface CodeBlockProps {
 
 export default function CodeBlock({ code }: CodeBlockProps) {
   return (
-    <div className='rounded-lg overflow-hidden border border-neutral-800 shadow-inner h-full bg-[#0f0f0f]'>
+    <div className='h-full bg-[#0f0f0f]'>
       <SyntaxHighlighter
         language='javascript'
-        style={vscDarkPlus}
+        style={lucario}
         customStyle={{
           margin: 0,
           padding: '1.5rem',
@@ -24,7 +24,6 @@ export default function CodeBlock({ code }: CodeBlockProps) {
         lineNumberStyle={{
           minWidth: '2em',
           paddingRight: '1em',
-          color: '#525252',
         }}
       >
         {code}

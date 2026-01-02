@@ -2,7 +2,7 @@ import { BarVisualizer } from 'components';
 import { useSorter } from 'hooks';
 import { AlgorithmInfo } from 'interfaces/types';
 
-interface SortingCardsProps {
+interface SortingCardProps {
   algorithm: AlgorithmInfo;
   isPlayingAll: boolean;
   initialData: number[];
@@ -10,13 +10,13 @@ interface SortingCardsProps {
   onClick: () => void;
 }
 
-export default function SortingCards({
+export default function SortingCard({
   algorithm,
   isPlayingAll,
   initialData,
   delay,
   onClick,
-}: SortingCardsProps) {
+}: SortingCardProps) {
   const { state } = useSorter({
     algorithm,
     arraySize: 20,
@@ -28,10 +28,10 @@ export default function SortingCards({
   return (
     <div
       onClick={onClick}
-      className='group flex flex-col h-[300px] bg-neutral-900/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden hover:border-white/20 hover:bg-neutral-900/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer relative'
+      className='group flex flex-col h-[260px] bg-neutral-900/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden hover:border-white/20 hover:bg-neutral-900/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer relative'
     >
-      <div className='p-3 sm:p-4 pb-0 text-center z-10'>
-        <h3 className='text-sm sm:text-base font-bold text-neutral-200 group-hover:text-white transition-colors truncate'>
+      <div className='p-3 sm:p-3 pb-0 text-center z-10'>
+        <h3 className='text-sm sm:text-sm font-bold text-neutral-200 group-hover:text-white transition-colors truncate'>
           {algorithm.name}
         </h3>
       </div>
@@ -40,8 +40,8 @@ export default function SortingCards({
         <BarVisualizer state={state} height='h-[85%] sm:h-full' />
       </div>
 
-      <div className='p-3 sm:p-4 pt-0 z-10 flex flex-col justify-end'>
-        <p className='text-[10px] sm:text-xs text-neutral-400 leading-tight line-clamp-3 mb-2 sm:mb-3 h-[3.75em]'>
+      <div className='p-3 sm:p-3 pt-0 z-10 flex flex-col justify-end'>
+        <p className='text-[10px] sm:text-[11px] text-neutral-400 leading-tight line-clamp-3 mb-2 sm:mb-3 h-[3.75em]'>
           {algorithm.description}
         </p>
 

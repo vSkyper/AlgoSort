@@ -1,5 +1,5 @@
-import { AlgorithmInfo } from '../interfaces/types';
-import * as Sorts from '../utils/sortingAlgorithms';
+import { AlgorithmInfo } from 'interfaces/types';
+import * as Sorts from 'utils/sortingAlgorithms';
 
 export const ALGORITHMS: AlgorithmInfo[] = [
   {
@@ -13,12 +13,16 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     algorithm: Sorts.bubbleSort,
     code: `function bubbleSort(arr) {
   const n = arr.length;
+  let swapped = true;
   for (let i = 0; i < n; i++) {
+    swapped = false;
     for (let j = 0; j < n - i - 1; j++) {
       if (arr[j] > arr[j + 1]) {
         [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        swapped = true;
       }
     }
+    if (!swapped) break;
   }
 }`,
   },
@@ -239,6 +243,17 @@ function merge(left, right) {
     code: `function introSort(arr) {
   const maxDepth = Math.floor(Math.log2(arr.length)) * 2;
   introSortRec(arr, 0, arr.length - 1, maxDepth);
+}
+function introSortRec(arr, low, high, depth) {
+  if (high - low < 16) {
+    insertionSort(arr, low, high);
+  } else if (depth === 0) {
+    heapSort(arr, low, high);
+  } else {
+    const pivot = partition(arr, low, high);
+    introSortRec(arr, low, pivot - 1, depth - 1);
+    introSortRec(arr, pivot + 1, high, depth - 1);
+  }
 }`,
   },
   {
@@ -303,9 +318,13 @@ function merge(left, right) {
     reference: 'https://www.geeksforgeeks.org/bucket-sort-2/',
     algorithm: Sorts.bucketSort,
     code: `function bucketSort(arr) {
+  const max = Math.max(...arr, 100);
   const buckets = Array.from({length: 10}, () => []);
-  for (let x of arr) buckets[Math.floor(x * 10)].push(x);
-  for (let b of buckets) b.sort();
+  for (let x of arr) {
+    const idx = Math.floor((x / (max + 1)) * 10);
+    buckets[idx].push(x);
+  }
+  for (let b of buckets) b.sort((a,b) => a-b);
   return buckets.flat();
 }`,
   },
@@ -328,7 +347,7 @@ function merge(left, right) {
     name: 'Bogo Sort',
     description:
       'Ineffective algorithm that shuffles elements until they are sorted.',
-    timeComplexity: 'O(n!)',
+    timeComplexity: 'O((n + 1)!)',
     spaceComplexity: 'O(1)',
     reference: 'https://www.geeksforgeeks.org/bogosort-permutation-sort/',
     algorithm: Sorts.bogoSort,
@@ -343,7 +362,7 @@ function merge(left, right) {
     name: 'Sleep Sort',
     description:
       'Creates a thread for each element and sleeps for value-proportional time.',
-    timeComplexity: 'O(n)',
+    timeComplexity: 'O(n + V)',
     spaceComplexity: 'O(n)',
     reference:
       'https://www.geeksforgeeks.org/sleep-sort-king-laziness-sorting-sleeping/',

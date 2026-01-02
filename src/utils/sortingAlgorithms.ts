@@ -65,17 +65,21 @@ function getSortedSuffixIndices(arr: number[]): number[] {
 export function* bubbleSort(arr: number[]): SortGenerator {
   const n = arr.length;
   let sortedIndices: number[] = [];
+  let swapped = true;
 
   for (let i = 0; i < n; i++) {
+    swapped = false;
     for (let j = 0; j < n - i - 1; j++) {
       yield yieldState(arr, [j, j + 1], sortedIndices);
 
       if (arr[j] > arr[j + 1]) {
         [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        swapped = true;
         yield yieldState(arr, [j, j + 1], sortedIndices);
       }
     }
     sortedIndices.push(n - i - 1);
+    if (!swapped) break;
   }
   for (let i = 0; i < n; i++)
     if (!sortedIndices.includes(i)) sortedIndices.push(i);
