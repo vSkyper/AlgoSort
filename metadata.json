@@ -1,0 +1,5 @@
+{
+  "name": "AlgoSort Visualizer",
+  "description": "An interactive, dark-themed visualization of common sorting algorithms with code inspection.",
+  "requestFramePermissions": []
+}
