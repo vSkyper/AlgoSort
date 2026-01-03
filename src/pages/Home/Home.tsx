@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, RotateCcw, Pause } from 'lucide-react';
+import { Play, RotateCcw, Pause, Volume2, VolumeX } from 'lucide-react';
 import { AlgorithmInfo } from 'interfaces/types';
 import { ALGORITHMS } from 'constants/constants';
 import { SortingCard, SortingModal } from './components';
@@ -12,10 +12,10 @@ export default function Home() {
   // Shared array data for all cards
   const [sharedArray, setSharedArray] = useState<number[]>([]);
   const [speed, setSpeed] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Generate initial random data once
   useEffect(() => {
-    // Increased data size to 30 (approx 2x previous size)
     setSharedArray(
       Array.from({ length: 30 }, () => Math.floor(Math.random() * 90) + 10)
     );
@@ -38,10 +38,7 @@ export default function Home() {
     <div className='min-h-screen bg-black text-neutral-200 font-sans p-2 sm:p-4 lg:px-4 selection:bg-blue-500/30 flex flex-col relative overflow-hidden'>
       {/* Grid Background */}
       <div className='fixed inset-0 z-0 pointer-events-none'>
-        <div className='absolute inset-0 bg-[linear-gradient(to_right,#333333_1px,transparent_1px),linear-gradient(to_bottom,#333333_1px,transparent_1px)] bg-size-[24px_24px] opacity-25'></div>
-
-        <div className='absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[800px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none'></div>
-        <div className='absolute bottom-0 left-1/2 -translate-x-1/2 h-[500px] w-[800px] bg-purple-600/5 blur-[120px] rounded-full pointer-events-none'></div>
+        <div className='absolute inset-0 bg-[linear-gradient(to_right,#333333_1px,transparent_1px),linear-gradient(to_bottom,#333333_1px,transparent_1px)] bg-size-[24px_24px] opacity-40'></div>
       </div>
 
       {/* Floating Header */}
@@ -56,21 +53,35 @@ export default function Home() {
         </div>
 
         <div className='flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto'>
-          {/* Speed Controls */}
-          <div className='flex items-center p-1 rounded-lg border border-white/5 bg-black/40 backdrop-blur-sm'>
-            {[0.5, 1, 2, 4].map((s) => (
-              <button
-                key={s}
-                onClick={() => setSpeed(s)}
-                className={`relative px-3 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all duration-300 ${
-                  speed === s
-                    ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] ring-1 ring-white/20'
-                    : 'text-neutral-500 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {s}x
-              </button>
-            ))}
+          <div className='flex items-center gap-2'>
+            {/* Speed Controls */}
+            <div className='flex items-center p-1 rounded-lg border border-white/5 bg-black/40 backdrop-blur-sm'>
+              {[0.5, 1, 2, 4].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSpeed(s)}
+                  className={`relative px-3 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all duration-300 ${
+                    speed === s
+                      ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] ring-1 ring-white/20'
+                      : 'text-neutral-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`p-1.5 rounded-lg border transition-all duration-300 ${
+                !isMuted
+                  ? 'bg-white/10 border-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-black/40 border-white/5 text-neutral-500 hover:text-white hover:bg-white/5'
+              }`}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
           </div>
 
           <div className='flex items-center gap-2 w-full sm:w-auto justify-center'>
@@ -114,6 +125,7 @@ export default function Home() {
             initialData={sharedArray}
             delay={80 / speed}
             onClick={() => setSelectedAlgorithm(algo)}
+            isMuted={isMuted || !!selectedAlgorithm}
           />
         ))}
       </div>

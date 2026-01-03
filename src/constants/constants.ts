@@ -205,12 +205,25 @@ function merge(left, right) {
     spaceComplexity: 'O(log n)',
     reference: 'https://www.geeksforgeeks.org/quick-sort/',
     algorithm: Sorts.quickSort,
-    code: `function quickSort(arr, low, high) {
+    code: `function quickSort(arr, low = 0, high = arr.length - 1) {
   if (low < high) {
     let pi = partition(arr, low, high);
     quickSort(arr, low, pi - 1);
     quickSort(arr, pi + 1, high);
   }
+}
+
+function partition(arr, low, high) {
+  let pivot = arr[high];
+  let i = low - 1;
+  for (let j = low; j < high; j++) {
+    if (arr[j] < pivot) {
+      i++;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+  [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+  return i + 1;
 }`,
   },
   {
@@ -338,8 +351,30 @@ function introSortRec(arr, low, high, depth) {
     algorithm: Sorts.radixSort,
     code: `function radixSort(arr) {
   const max = Math.max(...arr);
-  for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10)
+  for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
     countingSortByDigit(arr, exp);
+  }
+}
+
+function countingSortByDigit(arr, exp) {
+  const n = arr.length;
+  const output = new Array(n).fill(0);
+  const count = new Array(10).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    let idx = Math.floor(arr[i] / exp) % 10;
+    count[idx]++;
+  }
+
+  for (let i = 1; i < 10; i++) count[i] += count[i - 1];
+
+  for (let i = n - 1; i >= 0; i--) {
+    let idx = Math.floor(arr[i] / exp) % 10;
+    output[count[idx] - 1] = arr[i];
+    count[idx]--;
+  }
+
+  for (let i = 0; i < n; i++) arr[i] = output[i];
 }`,
   },
   {
@@ -354,6 +389,20 @@ function introSortRec(arr, low, high, depth) {
     code: `function bogoSort(arr) {
   while (!isSorted(arr)) {
     shuffle(arr);
+  }
+}
+
+function isSorted(arr) {
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (arr[i] > arr[i + 1]) return false;
+  }
+  return true;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }`,
   },

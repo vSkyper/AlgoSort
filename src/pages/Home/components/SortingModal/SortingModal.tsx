@@ -1,9 +1,18 @@
 import { BarVisualizer } from 'components';
-import { useSorter } from 'hooks';
+import { useSorter, useLockBodyScroll } from 'hooks';
 import { AlgorithmInfo } from 'interfaces/types';
-import { X, Play, RotateCcw, Pause, ExternalLink } from 'lucide-react';
+import {
+  X,
+  Play,
+  RotateCcw,
+  Pause,
+  ExternalLink,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CodeBlock } from './components';
+import { createPortal } from 'react-dom';
 
 interface SortingModalProps {
   algorithm: AlgorithmInfo;
@@ -16,6 +25,9 @@ export default function SortingModal({
 }: SortingModalProps) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useLockBodyScroll();
 
   const baseDelay = 50;
   const currentDelay = baseDelay / speed;
@@ -25,6 +37,7 @@ export default function SortingModal({
     arraySize: 50,
     delay: currentDelay,
     isPlaying: isPlaying,
+    isMuted,
   });
 
   useEffect(() => {
@@ -53,10 +66,10 @@ export default function SortingModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300'>
       <div className='bg-black/80 border border-white/10 backdrop-blur-2xl w-full max-w-5xl rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300 ring-1 ring-white/5'>
-        <div className='px-4 py-3 sm:px-6 sm:py-3 border-b border-white/5 flex justify-between items-center shrink-0 bg-white/5'>
+        <div className='px-4 py-3 sm:px-6 sm:py-4 border-b border-white/5 flex justify-between items-center shrink-0'>
           <div>
             <h2 className='text-lg sm:text-2xl font-bold text-white tracking-tight'>
               {algorithm.name}
@@ -139,7 +152,10 @@ export default function SortingModal({
 
                 {!state.isFinished && (
                   <button
-                    onClick={reset}
+                    onClick={() => {
+                      setIsPlaying(false);
+                      reset();
+                    }}
                     className='group p-2.5 sm:p-3 bg-neutral-900 border border-white/10 rounded-xl hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all duration-300 hover:border-white/20'
                     title='Reset'
                   >
@@ -170,6 +186,24 @@ export default function SortingModal({
                     </button>
                   ))}
                 </div>
+
+                <div className='h-4 w-px bg-white/10 mx-1 sm:mx-2'></div>
+
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className={`p-1.5 sm:p-2 rounded-lg border transition-all duration-300 ${
+                    !isMuted
+                      ? 'bg-white/10 border-white/20 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)]'
+                      : 'bg-black/40 border-white/5 text-neutral-500 hover:text-white hover:bg-white/5'
+                  }`}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted ? (
+                    <VolumeX size={14} className='sm:w-4 sm:h-4' />
+                  ) : (
+                    <Volume2 size={14} className='sm:w-4 sm:h-4' />
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -205,6 +239,7 @@ export default function SortingModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

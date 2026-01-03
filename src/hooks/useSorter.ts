@@ -1,5 +1,6 @@
 import { AlgorithmInfo, VisualizationState } from 'interfaces/types';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { soundGenerator } from 'utils/soundGenerator';
 
 interface UseSorterProps {
   algorithm: AlgorithmInfo;
@@ -8,6 +9,7 @@ interface UseSorterProps {
   delay?: number;
   isPlaying: boolean;
   onFinish?: () => void;
+  isMuted?: boolean;
 }
 
 const generateRandomArray = (size: number) => {
@@ -24,6 +26,7 @@ export const useSorter = ({
   delay = 50,
   isPlaying,
   onFinish,
+  isMuted = false,
 }: UseSorterProps) => {
   const [state, setState] = useState<VisualizationState>({
     array: [],
@@ -91,6 +94,14 @@ export const useSorter = ({
           pivotIndex: value.pivotIndex,
           isFinished: false,
         });
+
+        // Play sound if not muted and we have active indices to visualize
+        if (!isMuted && value.activeIndices.length > 0) {
+          const val = value.array[value.activeIndices[0]];
+          // Estimate max value around 100 based on generation logic
+          soundGenerator.playTone(val, 100);
+        }
+
         timeoutRef.current = setTimeout(runStep, delay);
       }
     };
@@ -111,6 +122,7 @@ export const useSorter = ({
     state.isFinished,
     state.array.length,
     onFinish,
+    isMuted,
   ]);
 
   return { state, reset };

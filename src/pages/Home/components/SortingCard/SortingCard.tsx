@@ -8,6 +8,7 @@ interface SortingCardProps {
   initialData: number[];
   delay: number;
   onClick: () => void;
+  isMuted?: boolean;
 }
 
 export default function SortingCard({
@@ -16,6 +17,7 @@ export default function SortingCard({
   initialData,
   delay,
   onClick,
+  isMuted = false,
 }: SortingCardProps) {
   const { state } = useSorter({
     algorithm,
@@ -23,6 +25,7 @@ export default function SortingCard({
     initialData,
     delay,
     isPlaying: isPlayingAll,
+    isMuted,
   });
 
   return (

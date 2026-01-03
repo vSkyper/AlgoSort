@@ -1,27 +1,23 @@
 import { SortGenerator } from 'interfaces/types';
 
-// Helper to yield state
-function yieldState(
+const yieldState = (
   array: number[],
   activeIndices: number[],
   sortedIndices: number[],
   pivotIndex?: number
-) {
-  return {
-    array: [...array],
-    activeIndices: [...activeIndices],
-    sortedIndices: [...sortedIndices],
-    pivotIndex,
-  };
-}
+) => ({
+  array: [...array],
+  activeIndices: [...activeIndices],
+  sortedIndices: [...sortedIndices],
+  pivotIndex,
+});
 
-// Helper to dynamically calculate sorted suffix (elements at the end that are in final position)
+// Helper to calculate sorted suffix indices
 function getSortedSuffixIndices(arr: number[]): number[] {
   const n = arr.length;
   const sortedIndices: number[] = [];
 
-  // 1. Precompute running maximums from the left
-  // maxLeft[i] contains the maximum value in arr[0...i-1]
+  // Precompute maxLeft and minRight arrays
   const maxLeft = new Array(n).fill(-Infinity);
   let curMax = -Infinity;
   for (let i = 0; i < n; i++) {
@@ -29,8 +25,6 @@ function getSortedSuffixIndices(arr: number[]): number[] {
     curMax = Math.max(curMax, arr[i]);
   }
 
-  // 2. Precompute running minimums from the right
-  // minRight[i] contains the minimum value in arr[i+1...n-1]
   const minRight = new Array(n).fill(Infinity);
   let curMin = Infinity;
   for (let i = n - 1; i >= 0; i--) {
@@ -38,8 +32,6 @@ function getSortedSuffixIndices(arr: number[]): number[] {
     curMin = Math.min(curMin, arr[i]);
   }
 
-  // 3. Identify elements that are in their sorted position
-  // An element at i is sorted if it is >= everything to the left AND <= everything to the right
   const isSortedPos = new Array(n).fill(false);
   for (let i = 0; i < n; i++) {
     if (arr[i] >= maxLeft[i] && arr[i] <= minRight[i]) {
@@ -47,13 +39,11 @@ function getSortedSuffixIndices(arr: number[]): number[] {
     }
   }
 
-  // 4. We only want to visualize the contiguous block at the end of the array
-  // So we scan backwards from n-1 and stop as soon as we hit a non-sorted element
   for (let i = n - 1; i >= 0; i--) {
     if (isSortedPos[i]) {
       sortedIndices.push(i);
     } else {
-      break; // Stop at the first unsorted element from the right
+      break;
     }
   }
 
@@ -114,7 +104,7 @@ export function* insertionSort(arr: number[]): SortGenerator {
   for (let i = 1; i < n; i++) {
     let key = arr[i];
     let j = i - 1;
-    // Indices 0 to i-1 are considered "sorted" (relative to themselves)
+    // Indices 0 to i-1 are sorted
     let sortedIndices = Array.from({ length: i }, (_, k) => k);
 
     yield yieldState(arr, [i, j], sortedIndices);
@@ -143,10 +133,14 @@ export function* insertionSort(arr: number[]): SortGenerator {
 
 export function* gnomeSort(arr: number[]): SortGenerator {
   let index = 0;
+  let sortedBoundary = 0;
+
   while (index < arr.length) {
     if (index === 0) index++;
-    // Visualize sorted partition approx 0..index
-    const sortedIndices = Array.from({ length: index }, (_, k) => k);
+    sortedBoundary = Math.max(sortedBoundary, index);
+
+    // Visualize sorted partition 0..sortedBoundary
+    const sortedIndices = Array.from({ length: sortedBoundary }, (_, k) => k);
 
     yield yieldState(arr, [index, index - 1], sortedIndices);
     if (arr[index] >= arr[index - 1]) {
@@ -215,7 +209,6 @@ export function* combSort(arr: number[]): SortGenerator {
     }
 
     for (let i = 0; i + gap < arr.length; i++) {
-      // Use dynamic check to show green bars at the end
       const sortedIndices = getSortedSuffixIndices(arr);
       yield yieldState(arr, [i, i + gap], sortedIndices);
 
@@ -266,7 +259,8 @@ export function* oddEvenSort(arr: number[]): SortGenerator {
 // --- Efficient Sorts ---
 
 export function* mergeSort(arr: number[]): SortGenerator {
-  yield* mergeSortRecursive(arr, 0, arr.length - 1);
+  const sortedIndices: number[] = [];
+  yield* mergeSortRecursive(arr, 0, arr.length - 1, sortedIndices);
   yield yieldState(
     arr,
     [],
@@ -276,15 +270,22 @@ export function* mergeSort(arr: number[]): SortGenerator {
 function* mergeSortRecursive(
   arr: number[],
   l: number,
-  r: number
+  r: number,
+  sortedIndices: number[]
 ): SortGenerator {
   if (l >= r) return;
   const m = l + Math.floor((r - l) / 2);
-  yield* mergeSortRecursive(arr, l, m);
-  yield* mergeSortRecursive(arr, m + 1, r);
-  yield* merge(arr, l, m, r);
+  yield* mergeSortRecursive(arr, l, m, sortedIndices);
+  yield* mergeSortRecursive(arr, m + 1, r, sortedIndices);
+  yield* merge(arr, l, m, r, sortedIndices);
 }
-function* merge(arr: number[], l: number, m: number, r: number): SortGenerator {
+function* merge(
+  arr: number[],
+  l: number,
+  m: number,
+  r: number,
+  sortedIndices: number[] = []
+): SortGenerator {
   const n1 = m - l + 1;
   const n2 = r - m;
   const L = arr.slice(l, m + 1);
@@ -293,8 +294,15 @@ function* merge(arr: number[], l: number, m: number, r: number): SortGenerator {
     j = 0,
     k = l;
 
+  // Re-sorting range [l...r]
+  const range = new Set(Array.from({ length: r - l + 1 }, (_, idx) => l + idx));
+  const baseSorted = sortedIndices.filter((idx) => !range.has(idx));
+
+  // Track indices that become sorted during this merge
+  const activeMergeSorted: number[] = [];
+
   while (i < n1 && j < n2) {
-    yield yieldState(arr, [k], [], k);
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     if (L[i] <= R[j]) {
       arr[k] = L[i];
       i++;
@@ -302,20 +310,32 @@ function* merge(arr: number[], l: number, m: number, r: number): SortGenerator {
       arr[k] = R[j];
       j++;
     }
-    yield yieldState(arr, [k], [], k);
+    // Element at k is now sorted relative to this merge
+    activeMergeSorted.push(k);
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     k++;
   }
   while (i < n1) {
-    yield yieldState(arr, [k], [], k);
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     arr[k] = L[i];
     i++;
+    activeMergeSorted.push(k);
+    // Yield after assignment to show the placement
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     k++;
   }
   while (j < n2) {
-    yield yieldState(arr, [k], [], k);
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     arr[k] = R[j];
     j++;
+    activeMergeSorted.push(k);
+    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
     k++;
+  }
+
+  // Update global sortedIndices reference
+  for (let idx = l; idx <= r; idx++) {
+    if (!sortedIndices.includes(idx)) sortedIndices.push(idx);
   }
 }
 
@@ -337,7 +357,6 @@ function* quickSortRecursive(
   if (low < high) {
     const pivotIndex = yield* partition(arr, low, high, sortedIndices);
 
-    // Pivot is now finalized
     if (!sortedIndices.includes(pivotIndex)) sortedIndices.push(pivotIndex);
     yield yieldState(arr, [], sortedIndices);
 
@@ -405,7 +424,8 @@ function* heapify(
 
 export function* introSort(arr: number[]): SortGenerator {
   const maxDepth = Math.floor(Math.log2(arr.length)) * 2;
-  yield* introSortRecursive(arr, 0, arr.length - 1, maxDepth);
+  const sortedIndices: number[] = [];
+  yield* introSortRecursive(arr, 0, arr.length - 1, maxDepth, sortedIndices);
   yield yieldState(
     arr,
     [],
@@ -416,55 +436,89 @@ function* introSortRecursive(
   arr: number[],
   low: number,
   high: number,
-  depth: number
+  depth: number,
+  sortedIndices: number[]
 ): SortGenerator {
   if (high - low < 16) {
-    yield* insertionSortSub(arr, low, high);
+    yield* insertionSortSub(arr, low, high, sortedIndices);
+    // Mark range as sorted
+    for (let i = low; i <= high; i++) {
+      if (!sortedIndices.includes(i)) sortedIndices.push(i);
+    }
+    yield yieldState(arr, [], sortedIndices);
   } else if (depth === 0) {
-    yield* heapSortSub(arr, low, high);
+    yield* heapSortSub(arr, low, high, sortedIndices);
+    // Mark range as sorted
+    for (let i = low; i <= high; i++) {
+      if (!sortedIndices.includes(i)) sortedIndices.push(i);
+    }
+    yield yieldState(arr, [], sortedIndices);
   } else {
-    // We can't easily pass sortedIndices here without changing signature significantly.
-    // Keeping basic implementation for now.
-    const pivot = yield* partition(arr, low, high, []);
-    yield* introSortRecursive(arr, low, pivot - 1, depth - 1);
-    yield* introSortRecursive(arr, pivot + 1, high, depth - 1);
+    const pivot = yield* partition(arr, low, high, sortedIndices);
+    if (!sortedIndices.includes(pivot)) sortedIndices.push(pivot);
+    yield yieldState(arr, [], sortedIndices);
+
+    yield* introSortRecursive(arr, low, pivot - 1, depth - 1, sortedIndices);
+    yield* introSortRecursive(arr, pivot + 1, high, depth - 1, sortedIndices);
   }
 }
 function* insertionSortSub(
   arr: number[],
   low: number,
-  high: number
+  high: number,
+  sortedIndices: number[] = []
 ): SortGenerator {
   for (let i = low + 1; i <= high; i++) {
     let key = arr[i];
     let j = i - 1;
+
+    // Calculate locally sorted indices: low to i
+    const localSorted = Array.from({ length: i - low }, (_, k) => k + low);
+    const currentSorted = [...sortedIndices, ...localSorted];
+
     while (j >= low && arr[j] > key) {
       arr[j + 1] = arr[j];
       j--;
-      yield yieldState(arr, [j + 1, i], []);
+      yield yieldState(arr, [j + 1, i], currentSorted);
     }
     arr[j + 1] = key;
-    yield yieldState(arr, [j + 1], []);
+    yield yieldState(arr, [j + 1], [...currentSorted, i]);
   }
 }
-function* heapSortSub(arr: number[], low: number, high: number): SortGenerator {
+function* heapSortSub(
+  arr: number[],
+  low: number,
+  high: number,
+  sortedIndices: number[] = []
+): SortGenerator {
   const n = high - low + 1;
   // Build heap
   for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-    yield* heapifySub(arr, n, i, low);
+    yield* heapifySub(arr, n, i, low, sortedIndices);
   }
+
+  const localSortedSuffix: number[] = [];
+
   // Extract
   for (let i = n - 1; i > 0; i--) {
     [arr[low], arr[low + i]] = [arr[low + i], arr[low]];
-    yield yieldState(arr, [low, low + i], []);
-    yield* heapifySub(arr, i, 0, low);
+    localSortedSuffix.push(low + i);
+
+    // Merge global sorted indices with locally sorted suffix
+    const currentSorted = [...sortedIndices, ...localSortedSuffix];
+
+    yield yieldState(arr, [low, low + i], currentSorted);
+    yield* heapifySub(arr, i, 0, low, currentSorted);
   }
+  localSortedSuffix.push(low);
+  yield yieldState(arr, [], [...sortedIndices, ...localSortedSuffix]);
 }
 function* heapifySub(
   arr: number[],
   n: number,
   i: number,
-  offset: number
+  offset: number,
+  sortedIndices: number[] = []
 ): SortGenerator {
   let largest = i;
   let l = 2 * i + 1;
@@ -476,23 +530,35 @@ function* heapifySub(
       arr[offset + largest],
       arr[offset + i],
     ];
-    yield yieldState(arr, [offset + i, offset + largest], []);
-    yield* heapifySub(arr, n, largest, offset);
+    yield yieldState(arr, [offset + i, offset + largest], sortedIndices);
+    yield* heapifySub(arr, n, largest, offset, sortedIndices);
   }
 }
 
 export function* timSort(arr: number[]): SortGenerator {
   const RUN = 32;
   const n = arr.length;
+  const sortedIndices: number[] = [];
+
   for (let i = 0; i < n; i += RUN) {
-    yield* insertionSortSub(arr, i, Math.min(i + RUN - 1, n - 1));
+    yield* insertionSortSub(
+      arr,
+      i,
+      Math.min(i + RUN - 1, n - 1),
+      sortedIndices
+    );
+    // Mark run as sorted
+    const runEnd = Math.min(i + RUN - 1, n - 1);
+    for (let k = i; k <= runEnd; k++) {
+      if (!sortedIndices.includes(k)) sortedIndices.push(k);
+    }
   }
   for (let size = RUN; size < n; size = 2 * size) {
     for (let left = 0; left < n; left += 2 * size) {
       let mid = left + size - 1;
       let right = Math.min(left + 2 * size - 1, n - 1);
       if (mid < right) {
-        yield* merge(arr, left, mid, right);
+        yield* merge(arr, left, mid, right, sortedIndices);
       }
     }
   }
@@ -617,26 +683,47 @@ export function* bucketSort(arr: number[]): SortGenerator {
   if (arr.length === 0) return;
   const bucketCount = 10;
   const max = Math.max(...arr, 100);
-  const buckets: number[][] = Array.from({ length: bucketCount }, () => []);
 
-  // Scatter
+  // 1. Scatter
+  const buckets: number[][] = Array.from({ length: bucketCount }, () => []);
   for (let i = 0; i < arr.length; i++) {
     const bucketIdx = Math.floor((arr[i] / (max + 1)) * bucketCount);
     buckets[bucketIdx].push(arr[i]);
     yield yieldState(arr, [i], []);
   }
 
-  // Sort buckets and Gather
-  const sortedIndices: number[] = [];
+  // 2. Gather
   let idx = 0;
+  const bucketRanges: { start: number; end: number }[] = [];
+
   for (let i = 0; i < bucketCount; i++) {
-    buckets[i].sort((a, b) => a - b);
-    for (let j = 0; j < buckets[i].length; j++) {
-      arr[idx++] = buckets[i][j];
-      sortedIndices.push(idx - 1);
-      yield yieldState(arr, [idx - 1], sortedIndices, idx - 1);
+    const start = idx;
+    for (const val of buckets[i]) {
+      arr[idx++] = val;
+      // Highlight the write operation
+      yield yieldState(arr, [idx - 1], []);
+    }
+    bucketRanges.push({ start, end: idx - 1 });
+  }
+
+  // 3. Sort Buckets
+  for (let i = 0; i < bucketCount; i++) {
+    const { start, end } = bucketRanges[i];
+    if (end >= start) {
+      // Non-empty bucket
+      // Calculate global sorted indices up to this start point
+      const globallySorted = Array.from({ length: start }, (_, k) => k);
+
+      // If bucket has more than 1 item, sort it
+      if (end > start) {
+        yield* insertionSortSub(arr, start, end, globallySorted);
+      } else {
+        yield yieldState(arr, [start], [...globallySorted, start]);
+      }
     }
   }
+
+  // Final sorted state
   yield yieldState(
     arr,
     [],
@@ -646,44 +733,45 @@ export function* bucketSort(arr: number[]): SortGenerator {
 
 export function* radixSort(arr: number[]): SortGenerator {
   const max = Math.max(...arr);
+
+  // Iterate through digits
   for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
+    const buckets: number[][] = Array.from({ length: 10 }, () => []);
+
+    // Check if this is the last pass
     const isLastPass = Math.floor(max / (exp * 10)) === 0;
-    yield* countingSortRadix(arr, exp, isLastPass);
+
+    // 1. Scatter
+    for (let i = 0; i < arr.length; i++) {
+      const idx = Math.floor(arr[i] / exp) % 10;
+      buckets[idx].push(arr[i]);
+      yield yieldState(arr, [i], []);
+    }
+
+    // 2. Gather
+    let idx = 0;
+    const sortedIndices: number[] = [];
+
+    for (let i = 0; i < 10; i++) {
+      for (const val of buckets[i]) {
+        arr[idx++] = val;
+
+        if (isLastPass) {
+          sortedIndices.push(idx - 1);
+        }
+
+        // Highlight write position
+        yield yieldState(arr, [idx - 1], [...sortedIndices]);
+      }
+    }
   }
+
+  // Final sorted state
   yield yieldState(
     arr,
     [],
     Array.from({ length: arr.length }, (_, i) => i)
   );
-}
-function* countingSortRadix(
-  arr: number[],
-  exp: number,
-  isLastPass: boolean
-): SortGenerator {
-  const n = arr.length;
-  const output = new Array(n).fill(0);
-  const count = new Array(10).fill(0);
-
-  for (let i = 0; i < n; i++) {
-    const index = Math.floor(arr[i] / exp) % 10;
-    count[index]++;
-    yield yieldState(arr, [i], []);
-  }
-  for (let i = 1; i < 10; i++) count[i] += count[i - 1];
-
-  for (let i = n - 1; i >= 0; i--) {
-    const index = Math.floor(arr[i] / exp) % 10;
-    output[count[index] - 1] = arr[i];
-    count[index]--;
-  }
-
-  const sortedIndices: number[] = [];
-  for (let i = 0; i < n; i++) {
-    arr[i] = output[i];
-    if (isLastPass) sortedIndices.push(i);
-    yield yieldState(arr, [i], isLastPass ? sortedIndices : []);
-  }
 }
 
 // --- Fun Sorts ---
@@ -713,22 +801,13 @@ export function* bogoSort(arr: number[]): SortGenerator {
 }
 
 export function* sleepSort(arr: number[]): SortGenerator {
-  // Visualize Sleep Sort by iterating through 'time' (values)
-  // and swapping matching elements to the sorted position.
-
   const max = Math.max(...arr);
   const sortedIndices: number[] = [];
 
-  // Iterate 'time'
   for (let t = 0; t <= max; t++) {
-    // Scan the unsorted portion of the array for the current time value
-    // Note: multiple elements might share the same value
     for (let i = sortedIndices.length; i < arr.length; i++) {
       if (arr[i] === t) {
-        // Visualize "waking up"
-        yield yieldState(arr, [i], sortedIndices);
-
-        // Move to correct position (swap with first unsorted index)
+        // Find insert position
         const insertIndex = sortedIndices.length;
         if (i !== insertIndex) {
           [arr[insertIndex], arr[i]] = [arr[i], arr[insertIndex]];
