@@ -11,7 +11,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CodeBlock } from './components';
+import { CodeBlock, CountsVisualizer, InfoVisualizer } from './components';
 import { createPortal } from 'react-dom';
 
 interface SortingModalProps {
@@ -29,12 +29,12 @@ export default function SortingModal({
 
   useLockBodyScroll();
 
-  const baseDelay = 50;
+  const baseDelay = 200;
   const currentDelay = baseDelay / speed;
 
   const { state, reset } = useSorter({
     algorithm,
-    arraySize: 50,
+    arraySize: 20,
     delay: currentDelay,
     isPlaying: isPlaying,
     isMuted,
@@ -89,7 +89,6 @@ export default function SortingModal({
             <p className='text-neutral-300 text-xs sm:text-sm leading-relaxed'>
               {algorithm.description}
             </p>
-
             {/* Complexity Cards */}
             <div className='grid grid-cols-2 gap-2 sm:gap-4'>
               <div className='bg-green-500/5 border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)] p-2 sm:p-4 rounded-lg sm:rounded-xl flex flex-col items-center justify-center gap-0.5 sm:gap-1'>
@@ -113,13 +112,22 @@ export default function SortingModal({
             <div className='bg-black/40 rounded-xl sm:rounded-2xl border border-white/5 p-4 sm:p-6 flex-1 min-h-[200px] sm:min-h-[250px] flex flex-col justify-end relative overflow-hidden shadow-inner'>
               <BarVisualizer state={state} height='h-full' />
             </div>
-
+            <InfoVisualizer
+              description={state.metadata?.description}
+              type={state.metadata?.type}
+            />
+            {state.auxiliaryArray && (
+              <CountsVisualizer
+                counts={state.auxiliaryArray}
+                min={state.metadata?.min || 0}
+              />
+            )}
             {/* Controls */}
             <div className='flex flex-col gap-3 sm:gap-4 shrink-0 bg-white/5 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5'>
               <div className='flex justify-center gap-2 sm:gap-3 items-center'>
                 <button
                   onClick={handlePlay}
-                  className={`group flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg flex-1 justify-center whitespace-nowrap border text-xs sm:text-sm ${
+                  className={`group flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg flex-1 justify-center whitespace-nowrap border text-xs sm:text-sm select-none ${
                     state.isFinished
                       ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20 border-transparent hover:scale-[1.02]'
                       : isPlaying
@@ -156,7 +164,7 @@ export default function SortingModal({
                       setIsPlaying(false);
                       reset();
                     }}
-                    className='group p-2.5 sm:p-3 bg-neutral-900 border border-white/10 rounded-xl hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all duration-300 hover:border-white/20'
+                    className='group p-2.5 sm:p-3 bg-neutral-900 border border-white/10 rounded-xl hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all duration-300 hover:border-white/20 select-none'
                     title='Reset'
                   >
                     <RotateCcw
@@ -172,11 +180,11 @@ export default function SortingModal({
                   Speed
                 </span>
                 <div className='flex gap-1 bg-black/40 p-1 rounded-lg border border-white/5'>
-                  {[0.5, 1, 2, 4].map((s) => (
+                  {[0.25, 0.5, 1, 2, 4, 8].map((s) => (
                     <button
                       key={s}
                       onClick={() => setSpeed(s)}
-                      className={`relative px-2.5 py-1 sm:px-4 sm:py-1.5 rounded sm:rounded-md text-[9px] sm:text-[10px] font-bold transition-all duration-300 ${
+                      className={`relative px-2.5 py-1 sm:px-4 sm:py-1.5 rounded sm:rounded-md text-[9px] sm:text-[10px] font-bold transition-all duration-300 select-none ${
                         speed === s
                           ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/10'
                           : 'text-neutral-500 hover:text-white hover:bg-white/5'

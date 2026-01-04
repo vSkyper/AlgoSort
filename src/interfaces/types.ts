@@ -4,6 +4,8 @@ export type SortGenerator = Generator<
     activeIndices: number[];
     sortedIndices: number[];
     pivotIndex?: number;
+    auxiliaryArray?: number[];
+    metadata?: Record<string, any>;
   },
   void,
   unknown
@@ -27,5 +29,7 @@ export interface VisualizationState {
   activeIndices: number[]; // Indices currently being compared/swapped
   sortedIndices: number[]; // Indices that are finalized
   pivotIndex?: number; // Specific for QuickSort visualization
+  auxiliaryArray?: number[]; // For Counting Sort, Bucket Sort, etc.
+  metadata?: Record<string, any>; // Generic metadata for specific visualizers
   isFinished: boolean;
 }

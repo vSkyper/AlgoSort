@@ -92,6 +92,8 @@ export const useSorter = ({
           activeIndices: value.activeIndices,
           sortedIndices: value.sortedIndices,
           pivotIndex: value.pivotIndex,
+          auxiliaryArray: value.auxiliaryArray,
+          metadata: value.metadata,
           isFinished: false,
         });
 

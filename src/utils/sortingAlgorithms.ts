@@ -4,12 +4,16 @@ const yieldState = (
   array: number[],
   activeIndices: number[],
   sortedIndices: number[],
-  pivotIndex?: number
+  pivotIndex?: number,
+  auxiliaryArray?: number[],
+  metadata?: Record<string, any>
 ) => ({
   array: [...array],
   activeIndices: [...activeIndices],
   sortedIndices: [...sortedIndices],
   pivotIndex,
+  auxiliaryArray: auxiliaryArray ? [...auxiliaryArray] : undefined,
+  metadata,
 });
 
 // Helper to calculate sorted suffix indices
@@ -60,12 +64,18 @@ export function* bubbleSort(arr: number[]): SortGenerator {
   for (let i = 0; i < n; i++) {
     swapped = false;
     for (let j = 0; j < n - i - 1; j++) {
-      yield yieldState(arr, [j, j + 1], sortedIndices);
+      yield yieldState(arr, [j, j + 1], sortedIndices, undefined, undefined, {
+        description: `Comparing ${arr[j]} and ${arr[j + 1]}`,
+        type: 'compare',
+      });
 
       if (arr[j] > arr[j + 1]) {
         [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
         swapped = true;
-        yield yieldState(arr, [j, j + 1], sortedIndices);
+        yield yieldState(arr, [j, j + 1], sortedIndices, undefined, undefined, {
+          description: `Swapping ${arr[j]} and ${arr[j + 1]}`,
+          type: 'swap',
+        });
       }
     }
     sortedIndices.push(n - i - 1);
@@ -73,7 +83,10 @@ export function* bubbleSort(arr: number[]): SortGenerator {
   }
   for (let i = 0; i < n; i++)
     if (!sortedIndices.includes(i)) sortedIndices.push(i);
-  yield yieldState(arr, [], sortedIndices);
+  yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+    description: 'Sorting completed',
+    type: 'success',
+  });
 }
 
 export function* selectionSort(arr: number[]): SortGenerator {
@@ -82,19 +95,35 @@ export function* selectionSort(arr: number[]): SortGenerator {
   for (let i = 0; i < n; i++) {
     let minIdx = i;
     for (let j = i + 1; j < n; j++) {
-      yield yieldState(arr, [i, j, minIdx], sortedIndices);
+      yield yieldState(
+        arr,
+        [i, j, minIdx],
+        sortedIndices,
+        undefined,
+        undefined,
+        {
+          description: `Comparing ${arr[j]} and current min ${arr[minIdx]}`,
+          type: 'compare',
+        }
+      );
       if (arr[j] < arr[minIdx]) minIdx = j;
     }
     if (minIdx !== i) {
       [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
-      yield yieldState(arr, [i, minIdx], sortedIndices);
+      yield yieldState(arr, [i, minIdx], sortedIndices, undefined, undefined, {
+        description: `Swapping minimum ${arr[minIdx]} and ${arr[i]}`,
+        type: 'swap',
+      });
     }
     sortedIndices.push(i);
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: n }, (_, i) => i)
+    Array.from({ length: n }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -104,30 +133,45 @@ export function* insertionSort(arr: number[]): SortGenerator {
   for (let i = 1; i < n; i++) {
     let key = arr[i];
     let j = i - 1;
-    // Indices 0 to i-1 are sorted
-    let sortedIndices = Array.from({ length: i }, (_, k) => k);
+    // Indices 0 to i are strictly sorted (or processing i into sorted part)
+    let sortedIndices = Array.from({ length: i + 1 }, (_, k) => k);
 
-    yield yieldState(arr, [i, j], sortedIndices);
+    yield yieldState(arr, [i, j], sortedIndices, undefined, undefined, {
+      description: `Selected ${key} to insert`,
+      type: 'info',
+    });
     while (j >= 0 && arr[j] > key) {
-      yield yieldState(arr, [j, j + 1], sortedIndices);
+      yield yieldState(arr, [j, j + 1], sortedIndices, undefined, undefined, {
+        description: `Moving ${arr[j]} to position ${j + 1}`,
+        type: 'move',
+      });
       arr[j + 1] = arr[j];
       j = j - 1;
       const tempArr = [...arr];
       tempArr[j + 1] = key;
-      yield yieldState(tempArr, [j + 1], sortedIndices);
+      yield yieldState(tempArr, [j + 1], sortedIndices, undefined, undefined, {
+        description: `Moving ${arr[j + 1]} to position ${j + 1}`,
+        type: 'move',
+      });
     }
     arr[j + 1] = key;
     // After insertion, 0..i is sorted
     yield yieldState(
       arr,
       [j + 1],
-      Array.from({ length: i + 1 }, (_, k) => k)
+      Array.from({ length: i + 1 }, (_, k) => k),
+      undefined,
+      undefined,
+      { description: `Inserted ${key} at position ${j + 1}`, type: 'move' }
     );
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: n }, (_, i) => i)
+    Array.from({ length: n }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -140,21 +184,47 @@ export function* gnomeSort(arr: number[]): SortGenerator {
     sortedBoundary = Math.max(sortedBoundary, index);
 
     // Visualize sorted partition 0..sortedBoundary
-    const sortedIndices = Array.from({ length: sortedBoundary }, (_, k) => k);
+    const sortedIndices = Array.from(
+      { length: sortedBoundary + 1 },
+      (_, k) => k
+    );
 
-    yield yieldState(arr, [index, index - 1], sortedIndices);
+    yield yieldState(
+      arr,
+      [index, index - 1],
+      sortedIndices,
+      undefined,
+      undefined,
+      {
+        description: `Comparing ${arr[index]} and ${arr[index - 1]}`,
+        type: 'compare',
+      }
+    );
     if (arr[index] >= arr[index - 1]) {
       index++;
     } else {
       [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
-      yield yieldState(arr, [index, index - 1], sortedIndices);
+      yield yieldState(
+        arr,
+        [index, index - 1],
+        sortedIndices,
+        undefined,
+        undefined,
+        {
+          description: `Swapping ${arr[index]} and ${arr[index - 1]}`,
+          type: 'swap',
+        }
+      );
       index--;
     }
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -166,24 +236,38 @@ export function* cocktailShakerSort(arr: number[]): SortGenerator {
 
   while (swapped) {
     swapped = false;
+    // Forward pass
     for (let i = start; i < end - 1; ++i) {
-      yield yieldState(arr, [i, i + 1], sortedIndices);
+      yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+        description: `Forward pass: Comparing ${arr[i]} and ${arr[i + 1]}`,
+        type: 'compare',
+      });
       if (arr[i] > arr[i + 1]) {
         [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
         swapped = true;
-        yield yieldState(arr, [i, i + 1], sortedIndices);
+        yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+          description: `Forward pass: Swapping ${arr[i]} and ${arr[i + 1]}`,
+          type: 'swap',
+        });
       }
     }
     sortedIndices.push(end - 1);
     if (!swapped) break;
     swapped = false;
     end--;
+    // Backward pass
     for (let i = end - 1; i >= start; i--) {
-      yield yieldState(arr, [i, i + 1], sortedIndices);
+      yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+        description: `Backward pass: Comparing ${arr[i]} and ${arr[i + 1]}`,
+        type: 'compare',
+      });
       if (arr[i] > arr[i + 1]) {
         [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
         swapped = true;
-        yield yieldState(arr, [i, i + 1], sortedIndices);
+        yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+          description: `Backward pass: Swapping ${arr[i]} and ${arr[i + 1]}`,
+          type: 'swap',
+        });
       }
     }
     sortedIndices.push(start);
@@ -192,7 +276,10 @@ export function* cocktailShakerSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -210,19 +297,35 @@ export function* combSort(arr: number[]): SortGenerator {
 
     for (let i = 0; i + gap < arr.length; i++) {
       const sortedIndices = getSortedSuffixIndices(arr);
-      yield yieldState(arr, [i, i + gap], sortedIndices);
+      yield yieldState(arr, [i, i + gap], sortedIndices, undefined, undefined, {
+        description: `Gap ${gap}: Comparing ${arr[i]} and ${arr[i + gap]}`,
+        type: 'compare',
+      });
 
       if (arr[i] > arr[i + gap]) {
         [arr[i], arr[i + gap]] = [arr[i + gap], arr[i]];
         sorted = false;
-        yield yieldState(arr, [i, i + gap], sortedIndices);
+        yield yieldState(
+          arr,
+          [i, i + gap],
+          sortedIndices,
+          undefined,
+          undefined,
+          {
+            description: `Gap ${gap}: Swapping ${arr[i]} and ${arr[i + gap]}`,
+            type: 'swap',
+          }
+        );
       }
     }
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -232,27 +335,42 @@ export function* oddEvenSort(arr: number[]): SortGenerator {
     sorted = true;
     for (let i = 1; i < arr.length - 1; i += 2) {
       const sortedIndices = getSortedSuffixIndices(arr);
-      yield yieldState(arr, [i, i + 1], sortedIndices);
+      yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+        description: `Odd Phase: Comparing ${arr[i]} and ${arr[i + 1]}`,
+        type: 'compare',
+      });
       if (arr[i] > arr[i + 1]) {
         [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
         sorted = false;
-        yield yieldState(arr, [i, i + 1], sortedIndices);
+        yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+          description: `Odd Phase: Swapping ${arr[i]} and ${arr[i + 1]}`,
+          type: 'swap',
+        });
       }
     }
     for (let i = 0; i < arr.length - 1; i += 2) {
       const sortedIndices = getSortedSuffixIndices(arr);
-      yield yieldState(arr, [i, i + 1], sortedIndices);
+      yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+        description: `Even Phase: Comparing ${arr[i]} and ${arr[i + 1]}`,
+        type: 'compare',
+      });
       if (arr[i] > arr[i + 1]) {
         [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
         sorted = false;
-        yield yieldState(arr, [i, i + 1], sortedIndices);
+        yield yieldState(arr, [i, i + 1], sortedIndices, undefined, undefined, {
+          description: `Even Phase: Swapping ${arr[i]} and ${arr[i + 1]}`,
+          type: 'swap',
+        });
       }
     }
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -264,7 +382,10 @@ export function* mergeSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 function* mergeSortRecursive(
@@ -302,7 +423,17 @@ function* merge(
   const activeMergeSorted: number[] = [];
 
   while (i < n1 && j < n2) {
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      {
+        description: `Comparing ${L[i]} and ${R[j]}`,
+        type: 'compare',
+      }
+    );
     if (L[i] <= R[j]) {
       arr[k] = L[i];
       i++;
@@ -312,24 +443,59 @@ function* merge(
     }
     // Element at k is now sorted relative to this merge
     activeMergeSorted.push(k);
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      { description: `Placed ${arr[k]} at position ${k}`, type: 'move' }
+    );
     k++;
   }
   while (i < n1) {
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      { description: `Copying ${L[i]} to position ${k}`, type: 'move' }
+    );
     arr[k] = L[i];
     i++;
     activeMergeSorted.push(k);
     // Yield after assignment to show the placement
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      { description: `Placed ${arr[k]} at position ${k}`, type: 'move' }
+    );
     k++;
   }
   while (j < n2) {
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      { description: `Copying ${R[j]} to position ${k}`, type: 'move' }
+    );
     arr[k] = R[j];
     j++;
     activeMergeSorted.push(k);
-    yield yieldState(arr, [k], [...baseSorted, ...activeMergeSorted], k);
+    yield yieldState(
+      arr,
+      [k],
+      [...baseSorted, ...activeMergeSorted],
+      k,
+      undefined,
+      { description: `Placed ${arr[k]} at position ${k}`, type: 'move' }
+    );
     k++;
   }
 
@@ -345,7 +511,10 @@ export function* quickSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 function* quickSortRecursive(
@@ -375,17 +544,29 @@ function* partition(
 ): Generator<any, number, any> {
   const pivot = arr[high];
   let i = low - 1;
-  yield yieldState(arr, [high], sortedIndices, high);
+  yield yieldState(arr, [high], sortedIndices, high, undefined, {
+    description: `Selected pivot: ${pivot}`,
+    type: 'info',
+  });
   for (let j = low; j < high; j++) {
-    yield yieldState(arr, [j, high], sortedIndices, high);
+    yield yieldState(arr, [j, high], sortedIndices, high, undefined, {
+      description: `Comparing ${arr[j]} and pivot ${pivot}`,
+      type: 'compare',
+    });
     if (arr[j] < pivot) {
       i++;
       [arr[i], arr[j]] = [arr[j], arr[i]];
-      yield yieldState(arr, [i, j], sortedIndices, high);
+      yield yieldState(arr, [i, j], sortedIndices, high, undefined, {
+        description: `Swapping ${arr[i]} and ${arr[j]} (smaller than pivot)`,
+        type: 'swap',
+      });
     }
   }
   [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
-  yield yieldState(arr, [i + 1, high], sortedIndices, i + 1);
+  yield yieldState(arr, [i + 1, high], sortedIndices, i + 1, undefined, {
+    description: `Placed pivot ${pivot} at position ${i + 1}`,
+    type: 'move',
+  });
   return i + 1;
 }
 
@@ -397,11 +578,17 @@ export function* heapSort(arr: number[]): SortGenerator {
   for (let i = n - 1; i > 0; i--) {
     [arr[0], arr[i]] = [arr[i], arr[0]];
     sortedIndices.push(i);
-    yield yieldState(arr, [0, i], sortedIndices);
+    yield yieldState(arr, [0, i], sortedIndices, undefined, undefined, {
+      description: `Moved max ${arr[i]} to position ${i}`,
+      type: 'move',
+    });
     yield* heapify(arr, i, 0, sortedIndices);
   }
   sortedIndices.push(0);
-  yield yieldState(arr, [], sortedIndices);
+  yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+    description: 'Sorting completed',
+    type: 'success',
+  });
 }
 function* heapify(
   arr: number[],
@@ -415,9 +602,15 @@ function* heapify(
   if (l < n && arr[l] > arr[largest]) largest = l;
   if (r < n && arr[r] > arr[largest]) largest = r;
   if (largest !== i) {
-    yield yieldState(arr, [i, largest], sortedIndices);
+    yield yieldState(arr, [i, largest], sortedIndices, undefined, undefined, {
+      description: `Heapifying: Swapping parent ${arr[i]} and child ${arr[largest]}`,
+      type: 'compare', // It's comparison + decision to swap really, but swap happens next
+    });
     [arr[i], arr[largest]] = [arr[largest], arr[i]];
-    yield yieldState(arr, [i, largest], sortedIndices);
+    yield yieldState(arr, [i, largest], sortedIndices, undefined, undefined, {
+      description: `Swapped. Continuing heapify`,
+      type: 'swap',
+    });
     yield* heapify(arr, n, largest, sortedIndices);
   }
 }
@@ -429,7 +622,10 @@ export function* introSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 function* introSortRecursive(
@@ -445,18 +641,27 @@ function* introSortRecursive(
     for (let i = low; i <= high; i++) {
       if (!sortedIndices.includes(i)) sortedIndices.push(i);
     }
-    yield yieldState(arr, [], sortedIndices);
+    yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+      description: `Insertion Sort completed for range [${low}, ${high}]`,
+      type: 'info',
+    });
   } else if (depth === 0) {
     yield* heapSortSub(arr, low, high, sortedIndices);
     // Mark range as sorted
     for (let i = low; i <= high; i++) {
       if (!sortedIndices.includes(i)) sortedIndices.push(i);
     }
-    yield yieldState(arr, [], sortedIndices);
+    yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+      description: `Heap Sort completed for range [${low}, ${high}]`,
+      type: 'info',
+    });
   } else {
     const pivot = yield* partition(arr, low, high, sortedIndices);
     if (!sortedIndices.includes(pivot)) sortedIndices.push(pivot);
-    yield yieldState(arr, [], sortedIndices);
+    yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+      description: `Partitioned at index ${pivot}`,
+      type: 'info',
+    });
 
     yield* introSortRecursive(arr, low, pivot - 1, depth - 1, sortedIndices);
     yield* introSortRecursive(arr, pivot + 1, high, depth - 1, sortedIndices);
@@ -479,10 +684,23 @@ function* insertionSortSub(
     while (j >= low && arr[j] > key) {
       arr[j + 1] = arr[j];
       j--;
-      yield yieldState(arr, [j + 1, i], currentSorted);
+      yield yieldState(arr, [j + 1, i], currentSorted, undefined, undefined, {
+        description: `Moving ${arr[j]} to position ${j + 1}`,
+        type: 'move',
+      });
     }
     arr[j + 1] = key;
-    yield yieldState(arr, [j + 1], [...currentSorted, i]);
+    yield yieldState(
+      arr,
+      [j + 1],
+      [...currentSorted, i],
+      undefined,
+      undefined,
+      {
+        description: `Inserted ${key} at position ${j + 1}`,
+        type: 'move',
+      }
+    );
   }
 }
 function* heapSortSub(
@@ -507,11 +725,24 @@ function* heapSortSub(
     // Merge global sorted indices with locally sorted suffix
     const currentSorted = [...sortedIndices, ...localSortedSuffix];
 
-    yield yieldState(arr, [low, low + i], currentSorted);
+    yield yieldState(arr, [low, low + i], currentSorted, undefined, undefined, {
+      description: `Moved max element to end of heap section`,
+      type: 'move',
+    });
     yield* heapifySub(arr, i, 0, low, currentSorted);
   }
   localSortedSuffix.push(low);
-  yield yieldState(arr, [], [...sortedIndices, ...localSortedSuffix]);
+  yield yieldState(
+    arr,
+    [],
+    [...sortedIndices, ...localSortedSuffix],
+    undefined,
+    undefined,
+    {
+      description: `Heap Sort phase finished`,
+      type: 'info',
+    }
+  );
 }
 function* heapifySub(
   arr: number[],
@@ -530,7 +761,17 @@ function* heapifySub(
       arr[offset + largest],
       arr[offset + i],
     ];
-    yield yieldState(arr, [offset + i, offset + largest], sortedIndices);
+    yield yieldState(
+      arr,
+      [offset + i, offset + largest],
+      sortedIndices,
+      undefined,
+      undefined,
+      {
+        description: `Heapifying: Swapping parent with larger child`,
+        type: 'swap',
+      }
+    );
     yield* heapifySub(arr, n, largest, offset, sortedIndices);
   }
 }
@@ -565,7 +806,10 @@ export function* timSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -575,7 +819,10 @@ export function* dualPivotQuickSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 function* dualPivotQuickSortRecursive(
@@ -587,7 +834,10 @@ function* dualPivotQuickSortRecursive(
   if (low < high) {
     if (arr[low] > arr[high]) {
       [arr[low], arr[high]] = [arr[high], arr[low]];
-      yield yieldState(arr, [low, high], sortedIndices);
+      yield yieldState(arr, [low, high], sortedIndices, undefined, undefined, {
+        description: `Ensuring left pivot ${arr[low]} < right pivot ${arr[high]}`,
+        type: 'swap',
+      });
     }
     const [lp, rp] = yield* partitionDual(arr, low, high, sortedIndices);
 
@@ -600,7 +850,10 @@ function* dualPivotQuickSortRecursive(
     yield* dualPivotQuickSortRecursive(arr, rp + 1, high, sortedIndices);
   } else if (low === high) {
     if (!sortedIndices.includes(low)) sortedIndices.push(low);
-    yield yieldState(arr, [], sortedIndices);
+    yield yieldState(arr, [], sortedIndices, undefined, undefined, {
+      description: `Element ${arr[low]} is sorted`,
+      type: 'info',
+    });
   }
 }
 function* partitionDual(
@@ -614,19 +867,37 @@ function* partitionDual(
   let i = low + 1;
   let k = low + 1;
   let j = high - 1;
-  yield yieldState(arr, [low, high], sortedIndices, low);
+  yield yieldState(arr, [low, high], sortedIndices, low, undefined, {
+    description: `Selected pivots: ${lp} and ${rp}`,
+    type: 'info',
+  });
 
   while (k <= j) {
-    yield yieldState(arr, [k, i, j], sortedIndices, low);
+    yield yieldState(arr, [k, i, j], sortedIndices, low, undefined, {
+      description: `Comparing ${arr[k]} with pivots ${lp} and ${rp}`,
+      type: 'compare',
+    });
     if (arr[k] < lp) {
       [arr[k], arr[i]] = [arr[i], arr[k]];
+      yield yieldState(arr, [k, i], sortedIndices, low, undefined, {
+        description: `Moving ${arr[i]} to left partition`,
+        type: 'swap',
+      });
       i++;
     } else if (arr[k] >= rp) {
       while (arr[j] > rp && k < j) j--;
       [arr[k], arr[j]] = [arr[j], arr[k]];
+      yield yieldState(arr, [k, j], sortedIndices, low, undefined, {
+        description: `Moving ${arr[k]} to right partition`,
+        type: 'swap',
+      });
       j--;
       if (arr[k] < lp) {
         [arr[k], arr[i]] = [arr[i], arr[k]];
+        yield yieldState(arr, [k, i], sortedIndices, low, undefined, {
+          description: `Moving ${arr[i]} to left partition`,
+          type: 'swap',
+        });
         i++;
       }
     }
@@ -636,7 +907,10 @@ function* partitionDual(
   j++;
   [arr[low], arr[i]] = [arr[i], arr[low]];
   [arr[high], arr[j]] = [arr[j], arr[high]];
-  yield yieldState(arr, [i, j], sortedIndices, i);
+  yield yieldState(arr, [i, j], sortedIndices, i, undefined, {
+    description: `Placed pivots ${lp} and ${rp} at final positions`,
+    type: 'swap',
+  });
   return [i, j];
 }
 
@@ -653,29 +927,53 @@ export function* countingSort(arr: number[]): SortGenerator {
   // Count frequencies
   for (let i = 0; i < arr.length; i++) {
     count[arr[i] - min]++;
-    yield yieldState(arr, [i], []);
+    yield yieldState(arr, [i], [], undefined, count, {
+      min,
+      max,
+      description: `Counting occurrences of ${arr[i]}`,
+      type: 'info',
+    });
   }
 
   for (let i = 1; i < count.length; i++) {
     count[i] += count[i - 1];
   }
+  yield yieldState(arr, [], [], undefined, count, {
+    min,
+    max,
+    description: 'Accumulating counts (calculating positions)',
+    type: 'info',
+  });
 
   for (let i = arr.length - 1; i >= 0; i--) {
     output[count[arr[i] - min] - 1] = arr[i];
     count[arr[i] - min]--;
-    yield yieldState(arr, [i], []);
+    yield yieldState(arr, [i], [], undefined, count, {
+      min,
+      max,
+      description: `Placed ${arr[i]} at position ${count[arr[i] - min]}`,
+      type: 'move',
+    });
   }
 
   const sortedIndices: number[] = [];
   for (let i = 0; i < arr.length; i++) {
     arr[i] = output[i];
     sortedIndices.push(i);
-    yield yieldState(arr, [i], sortedIndices, i);
+    yield yieldState(arr, [i], sortedIndices, i, count, {
+      min,
+      max,
+      description: 'Copying sorted array',
+      type: 'move',
+    });
   }
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    count, // Preserve count array to show table
+    { description: 'Sorting completed', type: 'success', min, max }
   );
 }
 
@@ -689,7 +987,10 @@ export function* bucketSort(arr: number[]): SortGenerator {
   for (let i = 0; i < arr.length; i++) {
     const bucketIdx = Math.floor((arr[i] / (max + 1)) * bucketCount);
     buckets[bucketIdx].push(arr[i]);
-    yield yieldState(arr, [i], []);
+    yield yieldState(arr, [i], [], undefined, undefined, {
+      description: `Scattering: Placed ${arr[i]} in bucket ${bucketIdx}`,
+      type: 'scatter',
+    });
   }
 
   // 2. Gather
@@ -701,7 +1002,10 @@ export function* bucketSort(arr: number[]): SortGenerator {
     for (const val of buckets[i]) {
       arr[idx++] = val;
       // Highlight the write operation
-      yield yieldState(arr, [idx - 1], []);
+      yield yieldState(arr, [idx - 1], [], undefined, undefined, {
+        description: `Gathering: Places ${val} from bucket ${i}`,
+        type: 'gather',
+      });
     }
     bucketRanges.push({ start, end: idx - 1 });
   }
@@ -713,12 +1017,26 @@ export function* bucketSort(arr: number[]): SortGenerator {
       // Non-empty bucket
       // Calculate global sorted indices up to this start point
       const globallySorted = Array.from({ length: start }, (_, k) => k);
+      yield yieldState(arr, [], globallySorted, undefined, undefined, {
+        description: `Sorting bucket ${i} (Insertion Sort)`,
+        type: 'info',
+      });
 
       // If bucket has more than 1 item, sort it
       if (end > start) {
         yield* insertionSortSub(arr, start, end, globallySorted);
       } else {
-        yield yieldState(arr, [start], [...globallySorted, start]);
+        yield yieldState(
+          arr,
+          [start],
+          [...globallySorted, start],
+          undefined,
+          undefined,
+          {
+            description: `Bucket ${i} has single item, already sorted`,
+            type: 'info',
+          }
+        );
       }
     }
   }
@@ -727,7 +1045,10 @@ export function* bucketSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -745,7 +1066,10 @@ export function* radixSort(arr: number[]): SortGenerator {
     for (let i = 0; i < arr.length; i++) {
       const idx = Math.floor(arr[i] / exp) % 10;
       buckets[idx].push(arr[i]);
-      yield yieldState(arr, [i], []);
+      yield yieldState(arr, [i], [], undefined, undefined, {
+        description: `Pass (exp=${exp}): Scattering ${arr[i]} to bucket ${idx}`,
+        type: 'scatter',
+      });
     }
 
     // 2. Gather
@@ -761,7 +1085,17 @@ export function* radixSort(arr: number[]): SortGenerator {
         }
 
         // Highlight write position
-        yield yieldState(arr, [idx - 1], [...sortedIndices]);
+        yield yieldState(
+          arr,
+          [idx - 1],
+          [...sortedIndices],
+          undefined,
+          undefined,
+          {
+            description: `Pass (exp=${exp}): Gathering ${val} from bucket ${i}`,
+            type: 'gather',
+          }
+        );
       }
     }
   }
@@ -770,7 +1104,10 @@ export function* radixSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }
 
@@ -789,14 +1126,25 @@ export function* bogoSort(arr: number[]): SortGenerator {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
-      yield yieldState(arr, [i, j], []);
+      yield yieldState(arr, [i, j], [], undefined, undefined, {
+        description: `Shuffling - Attempt ${attempts + 1}`,
+        type: 'info',
+      });
     }
     attempts++;
   }
   yield yieldState(
     arr,
     [],
-    isSorted(arr) ? Array.from({ length: arr.length }, (_, i) => i) : []
+    isSorted(arr) ? Array.from({ length: arr.length }, (_, i) => i) : [],
+    undefined,
+    undefined,
+    {
+      description: isSorted(arr)
+        ? 'Sorting completed!'
+        : 'Gave up after 500 attempts',
+      type: isSorted(arr) ? 'success' : 'info',
+    }
   );
 }
 
@@ -811,7 +1159,17 @@ export function* sleepSort(arr: number[]): SortGenerator {
         const insertIndex = sortedIndices.length;
         if (i !== insertIndex) {
           [arr[insertIndex], arr[i]] = [arr[i], arr[insertIndex]];
-          yield yieldState(arr, [insertIndex, i], sortedIndices);
+          yield yieldState(
+            arr,
+            [insertIndex, i],
+            sortedIndices,
+            undefined,
+            undefined,
+            {
+              description: `Wake up ${t}! Placed at position ${insertIndex}`,
+              type: 'move',
+            }
+          );
         }
 
         sortedIndices.push(insertIndex);
@@ -821,6 +1179,9 @@ export function* sleepSort(arr: number[]): SortGenerator {
   yield yieldState(
     arr,
     [],
-    Array.from({ length: arr.length }, (_, i) => i)
+    Array.from({ length: arr.length }, (_, i) => i),
+    undefined,
+    undefined,
+    { description: 'Sorting completed', type: 'success' }
   );
 }

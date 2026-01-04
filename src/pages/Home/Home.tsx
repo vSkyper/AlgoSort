@@ -42,7 +42,7 @@ export default function Home() {
       </div>
 
       {/* Floating Header */}
-      <header className='sticky top-2 sm:top-4 z-50 max-w-[1800px] w-full mx-auto mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 py-2 px-3 sm:px-4 rounded-xl border border-white/5 bg-white/5 backdrop-blur-md shadow-sm'>
+      <header className='sticky top-2 sm:top-4 z-50 max-w-[1800px] w-full mx-auto mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 py-2 px-3 sm:px-4 rounded-xl border border-white/5 bg-white/5 backdrop-blur-md shadow-sm select-none'>
         <div className='text-center sm:text-left flex items-baseline gap-3'>
           <h1 className='text-2xl sm:text-2xl font-bold tracking-tight text-white'>
             AlgoSort
@@ -60,7 +60,7 @@ export default function Home() {
                 <button
                   key={s}
                   onClick={() => setSpeed(s)}
-                  className={`relative px-3 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all duration-300 ${
+                  className={`relative px-3 py-1 rounded-md text-[10px] sm:text-xs font-bold transition-all duration-300 select-none ${
                     speed === s
                       ? 'bg-white/10 text-white shadow-[0_0_10px_rgba(255,255,255,0.1)] ring-1 ring-white/20'
                       : 'text-neutral-500 hover:text-white hover:bg-white/5'
@@ -73,7 +73,7 @@ export default function Home() {
 
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className={`p-1.5 rounded-lg border transition-all duration-300 ${
+              className={`p-1.5 rounded-lg border transition-all duration-300 select-none ${
                 !isMuted
                   ? 'bg-white/10 border-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'
                   : 'bg-black/40 border-white/5 text-neutral-500 hover:text-white hover:bg-white/5'
@@ -87,7 +87,7 @@ export default function Home() {
           <div className='flex items-center gap-2 w-full sm:w-auto justify-center'>
             <button
               onClick={togglePlayAll}
-              className={`group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg font-bold transition-all duration-300 shadow-md text-xs whitespace-nowrap ${
+              className={`group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg font-bold transition-all duration-300 shadow-md text-xs whitespace-nowrap select-none ${
                 isPlayingAll
                   ? 'bg-neutral-800 text-white border border-white/10 hover:bg-neutral-700'
                   : 'bg-white text-black hover:bg-neutral-200 hover:scale-[1.02]'
@@ -103,7 +103,7 @@ export default function Home() {
 
             <button
               onClick={handleResetAll}
-              className='group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg font-bold bg-white/5 border border-white/10 text-neutral-400 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 backdrop-blur-sm text-xs'
+              className='group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg font-bold bg-white/5 border border-white/10 text-neutral-400 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 backdrop-blur-sm text-xs select-none'
             >
               <RotateCcw
                 size={14}
